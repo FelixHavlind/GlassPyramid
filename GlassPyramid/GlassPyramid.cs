@@ -21,6 +21,12 @@ public class GlassPyramid
         }
     }
 
+    /// <summary>
+    /// Calculates the time it takes to fill a glass in seconds in a glass pyramid by simulation.
+    /// </summary>
+    /// <param name="targetDepth">Depth of the glass to be calculated.</param>
+    /// <param name="targetIndex">Index of the glass to be calculated.</param>
+    /// <returns>The time it takes to fill the glass in the pyramid.</returns>
     public decimal Simulate(int targetDepth, int targetIndex)
     {
         var counter = 0.0m;
@@ -53,11 +59,11 @@ public class GlassPyramid
 
                             if (Glass.Capacity < glass.Volume)
                             {
-                                var overflow = Glass.Capacity - glass.Volume;
+                                var overflow = glass.Volume - Glass.Capacity;
 
-                                if (glass == targetGlass) ;
-                                    // TODO: Implement counter offset.
-
+                                if (glass == targetGlass)
+                                    counter -= 1 * (overflow / glass.Inflow);
+                                
                                 if (depth < _maxDepth - 1)
                                 {   
                                     _glasses[depth + 1][index].Inflow += overflow * 0.5m;
@@ -72,7 +78,7 @@ public class GlassPyramid
             }
             
             ++counter;
-            Print();
+            // Print();
         }
 
         return counter;
