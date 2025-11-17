@@ -2,51 +2,49 @@ using System.Text;
 
 namespace GlassPyramid;
 
-public class GlassPyramid
+public class GlassPyramid(int maxDepth)
 {
-    private readonly int _maxDepth;
-    private readonly Glass[][] _glasses;
-
-    public GlassPyramid(int maxDepth)
+    private int _targetDepth;
+    private int _targetIndex;
+    
+    public decimal Simulate(int targetDepth, int targetIndex) 
     {
-        _maxDepth = maxDepth;
-        _glasses = new Glass[maxDepth][];
+        _targetDepth = targetDepth;
+        _targetIndex = targetIndex;
+        var glasses = new Glass[maxDepth][];
 
-        for (var depth = 0; depth < _maxDepth; depth++)
+        for (var depth = 0; depth < maxDepth; depth++)
         {
-            _glasses[depth] = new Glass[depth + 1];
+            glasses[depth] = new Glass[depth + 1];
 
-            for (var index = 0; index < _glasses[depth].Length; index++)
-                _glasses[depth][index] = new Glass();
+            for (var index = 0; index < glasses[depth].Length; index++)
+                glasses[depth][index] = new Glass(null, null);
         }
-    }
-
-    /// <summary>
-    /// Calculates the time it takes to fill a glass in seconds in a glass pyramid by simulation.
-    /// </summary>
-    /// <param name="targetDepth">Depth of the glass to be calculated.</param>
-    /// <param name="targetIndex">Index of the glass to be calculated.</param>
-    /// <returns>The time it takes to fill the glass in the pyramid.</returns>
-    public decimal Simulate(int targetDepth, int targetIndex)
-    {
+        
         var counter = 0.0m;
-        var topGlass = _glasses[0][0];
-        var targetGlass = _glasses[targetDepth][targetIndex];
+        var topGlass = glasses[0][0];
+        var targetGlass = glasses[targetDepth][targetIndex];
 
-        while (!targetGlass.Full)
+        while (!targetGlass.Full) 
         {
             topGlass.Inflow = 0.1m;
 
-            for (var depth = 0; depth < _maxDepth; depth++)
+            for (var depth = 0; depth < maxDepth; depth++)
             {
-                for (var index = 0; index < _glasses[depth].Length; index++)
+                for (var index = 0; index < glasses[depth].Length; index++)
                 {
-                    var glass = _glasses[depth][index];
+                    var glass = glasses[depth][index];
 
-                    if (glass.Full && depth < _maxDepth - 1)
+                    if (glass.Full)
                     {
-                        _glasses[depth + 1][index].Inflow += glass.Inflow * 0.5m;
-                        _glasses[depth + 1][index + 1].Inflow += glass.Inflow * 0.5m;
+                        if (depth < maxDepth - 1)
+                        {
+                            glasses[depth + 1][index].Inflow += glass.Inflow * 0.5m;
+                            glasses[depth + 1][index + 1].Inflow += glass.Inflow * 0.5m;
+                        }
+
+                        else
+                            glass.Inflow = 0.0m;
                     }
 
                     else
@@ -64,11 +62,13 @@ public class GlassPyramid
                                 if (glass == targetGlass)
                                     counter -= 1 * (overflow / glass.Inflow);
                                 
-                                if (depth < _maxDepth - 1)
+                                if (depth < maxDepth - 1)
                                 {   
-                                    _glasses[depth + 1][index].Inflow += overflow * 0.5m;
-                                    _glasses[depth + 1][index + 1].Inflow += overflow * 0.5m;
+                                    glasses[depth + 1][index].Inflow += overflow * 0.5m;
+                                    glasses[depth + 1][index + 1].Inflow += overflow * 0.5m;
                                 }
+
+                                glass.Volume = Glass.Capacity;
                             }
                         } 
                     }
@@ -78,26 +78,105 @@ public class GlassPyramid
             }
             
             ++counter;
-            // Print();
+            // Print(glasses);
         }
 
         return counter;
     }
+    
+    public decimal Calculate(int targetDepth, int targetIndex)
+    {
+        var topGlass = InitCalculate(targetDepth, targetIndex);
+        
+        Console.WriteLine(topGlass.Depth + ", " + topGlass.Index);
 
-    private void Print()
+        throw new NotImplementedException();
+    }
+
+    private static Glass InitCalculate(int targetDepth, int targetIndex)
+    {
+        var glassQueue = new Queue<Glass>([new Glass(targetDepth, targetIndex, null, null)]);
+
+        while (0 < glassQueue.Count)
+        {
+            var glass = glassQueue.Dequeue();
+            
+            if (glass is { Depth: 0, Index: 0 })
+            {
+                return glass;
+            }
+            
+            var parentDepth = glass.Depth - 1;
+            var parentLeftIndex = glass.Index - 1;
+            var parentRightIndex = glass.Index;
+
+            if (0 <= parentLeftIndex && parentRightIndex <= parentDepth)
+            {
+                if (0 == parentLeftIndex)
+                {
+                    glassQueue.Enqueue(new Glass(parentDepth, parentLeftIndex, null, glass));
+                }
+
+                else if (parentRightIndex == parentDepth)
+                {
+                    glassQueue.Enqueue(new Glass(parentDepth, parentRightIndex, glass, null));   
+                }
+
+                else
+                {
+                    
+                }   
+            }
+        }
+
+        throw new InvalidOperationException("This should not be possible");
+    }
+
+    private void Print(Glass[][] glasses)
     {
         var stringBuilder = new StringBuilder();
 
-        for (var depth = 0; depth < _maxDepth; depth++)
+        for (var depth = 0; depth < maxDepth; depth++)
         {
-            stringBuilder.Append(string.Concat(Enumerable.Repeat("     ", _maxDepth - depth - 1)));
+            stringBuilder.Append(string.Concat(Enumerable.Repeat("     ", maxDepth - depth - 1)));
             
-            for (var index = 0; index < _glasses[depth].Length; index++)
-                stringBuilder.Append('[').Append((_glasses[depth][index].Volume * 100).ToString("000.0000")).Append(']');
+            for (var index = 0; index < glasses[depth].Length; index++)
+                stringBuilder.Append('[').Append((glasses[depth][index].Volume * 100).ToString("000.0000")).Append(']');
             
             stringBuilder.AppendLine();
         }
         
         Console.WriteLine(stringBuilder.ToString());
+    }
+
+    private bool HasSingleChild(Glass glass)
+    {
+        var targetDepth = _targetDepth;
+        var targetIndex = _targetIndex;
+
+        while (targetIndex <= targetDepth)
+        {
+            if (glass.Depth == targetDepth && glass.Index == targetIndex)
+            {
+                return true;
+            }
+
+            targetDepth--;
+        }
+
+        targetDepth = _targetDepth;
+
+        while (0 <= targetIndex)
+        {
+            if (glass.Depth == targetDepth && glass.Index == targetIndex)
+            {
+                return true;
+            }
+
+            targetDepth--;
+            targetIndex--;
+        }
+
+        return false;
     }
 }
